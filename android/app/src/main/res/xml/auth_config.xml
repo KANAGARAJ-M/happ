@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="auth_screen_title">Biometric Authentication</string>
+    <string name="auth_screen_subtitle">Log in to access your medical records</string>
+    <string name="auth_screen_description">Scan your fingerprint or use your device PIN to continue</string>
+    <string name="auth_screen_cancel">Cancel</string>
+</resources>

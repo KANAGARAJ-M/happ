@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "532195209657",
+    "firebase_url": "https://sharemedia-820ca-default-rtdb.firebaseio.com",
+    "project_id": "sharemedia-820ca",
+    "storage_bucket": "sharemedia-820ca.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:532195209657:android:72aca62a42ef0780950668",
+        "android_client_info": {
+          "package_name": "com.example.happ"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "532195209657-j1prt70qe66cnofoqhi1qa300a6kp7sn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBcvYnX_jtmnYQGBRWULV0UpPgxYGGgHsk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "532195209657-j1prt70qe66cnofoqhi1qa300a6kp7sn.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "532195209657-5264uvnb985b0m86n9d5nlfkhefcrlil.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "vshare.mskp.mrkcreations.com.vshare"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
