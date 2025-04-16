@@ -1,0 +1,14 @@
+subprojects {
+    if (project.name.contains('firebase') || project.name.contains('google-services')) {
+        project.configurations.all {
+            resolutionStrategy {
+                eachDependency { details ->
+                    if (details.requested.group == 'com.google.firebase' && details.requested.name == 'firebase-iid') {
+                        details.useTarget(group: details.requested.group, name: 'firebase-iid-interop', version: details.requested.version)
+                        details.because("firebase-iid is causing duplicate class conflicts")
+                    }
+                }
+            }
+        }
+    }
+}

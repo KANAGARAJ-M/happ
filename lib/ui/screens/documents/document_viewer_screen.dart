@@ -4,16 +4,17 @@ import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:photo_view/photo_view.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:happ/core/services/blockchain_service.dart';
 
 class DocumentViewerScreen extends StatefulWidget {
   final String url;
   final bool isImage;
 
   const DocumentViewerScreen({
-    Key? key,
+    super.key,
     required this.url,
     required this.isImage,
-  }) : super(key: key);
+  });
 
   @override
   State<DocumentViewerScreen> createState() => _DocumentViewerScreenState();
@@ -106,6 +107,14 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
                 } catch (e) {
                   // Ignore zoom errors
                 }
+              },
+            ),
+          if (!_isLoading && _localFilePath != null)
+            IconButton(
+              icon: const Icon(Icons.biotech),
+              tooltip: 'Analyze Medical Content',
+              onPressed: () {
+                _analyzeDocument();
               },
             ),
         ],
@@ -248,5 +257,77 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
       minScale: PhotoViewComputedScale.contained,
       maxScale: PhotoViewComputedScale.covered * 2,
     );
+  }
+
+  void _analyzeDocument() async {
+    try {
+      showDialog(
+        context: context,
+        builder: (context) => const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Analyzing document content...'),
+            ],
+          ),
+        ),
+      );
+      
+      final blockchainService = BlockchainService();
+      final fileType = widget.isImage ? 'jpg' : 'pdf';
+      final result = await blockchainService.analyzeDocument(widget.url, fileType);
+      
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      
+      if (result.criticalInsights.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No medical insights found in this document')),
+        );
+        return;
+      }
+      
+      // Show results in a dialog
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Medical Insights'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: [
+                Text(result.summary),
+                const SizedBox(height: 16),
+                ...result.criticalInsights.map((insight) => ListTile(
+                  title: Text(insight.term),
+                  subtitle: Text(insight.definition),
+                  leading: Icon(
+                    Icons.medical_services,
+                    color: insight.severity == 'High' 
+                        ? Colors.red 
+                        : (insight.severity == 'Medium' ? Colors.orange : Colors.green),
+                  ),
+                )),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Close'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error analyzing document: $e')),
+      );
+    }
   }
 }

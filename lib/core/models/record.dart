@@ -12,6 +12,7 @@ class Record {
   final bool isPrivate;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? createdBy; // Ensure this is added
 
   Record({
     required this.id,
@@ -25,6 +26,7 @@ class Record {
     required this.isPrivate,
     required this.createdAt,
     required this.updatedAt,
+    this.createdBy, // Include in constructor
   });
 
   String get formattedDate => DateFormat('MMM dd, yyyy').format(date);
@@ -33,26 +35,43 @@ class Record {
       category.substring(0, 1).toUpperCase() + category.substring(1);
 
   factory Record.fromJson(Map<String, dynamic> json) {
+    // Parse the creation date, update date, and record date
+    DateTime createdAt = json['createdAt'] is String 
+        ? DateTime.parse(json['createdAt']) 
+        : (json['createdAt'] ?? DateTime.now());
+    
+    DateTime updatedAt = json['updatedAt'] is String 
+        ? DateTime.parse(json['updatedAt']) 
+        : (json['updatedAt'] ?? DateTime.now());
+    
+    DateTime date = json['date'] is DateTime 
+        ? json['date'] 
+        : DateTime.parse(json['date'] ?? DateTime.now().toIso8601String());
+    
+    // Parse the list of tags and file URLs
+    List<String> tags = [];
+    if (json['tags'] != null) {
+      tags = List<String>.from(json['tags']);
+    }
+    
+    List<String> fileUrls = [];
+    if (json['fileUrls'] != null) {
+      fileUrls = List<String>.from(json['fileUrls']);
+    }
+    
     return Record(
       id: json['id'] ?? '',
       userId: json['userId'] ?? '',
       title: json['title'] ?? '',
       description: json['description'] ?? '',
-      category: json['category'] ?? '',
-      date: json['date'] is DateTime 
-          ? json['date']
-          : json['date'] is String 
-              ? DateTime.parse(json['date'])
-              : DateTime.now(),
-      tags: List<String>.from(json['tags'] ?? []),
-      fileUrls: List<String>.from(json['fileUrls'] ?? []),
-      isPrivate: json['isPrivate'] ?? false,
-      createdAt: json['createdAt'] is String
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
-      updatedAt: json['updatedAt'] is String
-          ? DateTime.parse(json['updatedAt'])
-          : DateTime.now(),
+      category: json['category'] ?? 'general',
+      date: date,
+      tags: tags,
+      fileUrls: fileUrls,
+      isPrivate: json['isPrivate'] ?? true,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      createdBy: json['createdBy'], // Add this line
     );
   }
 
@@ -69,6 +88,7 @@ class Record {
       'isPrivate': isPrivate,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'createdBy': createdBy, // Add this line
     };
   }
 
@@ -84,6 +104,7 @@ class Record {
     bool? isPrivate,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? createdBy,
   }) {
     return Record(
       id: id ?? this.id,
@@ -97,6 +118,7 @@ class Record {
       isPrivate: isPrivate ?? this.isPrivate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      createdBy: createdBy ?? this.createdBy,
     );
   }
 }

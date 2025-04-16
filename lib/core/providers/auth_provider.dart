@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/foundation.dart';
 import 'package:happ/core/models/user.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:happ/core/services/biometric_auth_service.dart';
 import 'package:happ/core/providers/records_provider.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -90,7 +89,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> signUp(String name, String email, String password, String role) async {
+  Future<bool> signUp(String name, String email, String password, {Map<String, dynamic>? additionalInfo}) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -99,19 +98,42 @@ class AuthProvider with ChangeNotifier {
         password: password,
       );
       if (userCredential.user != null) {
-        // Create user document in Firestore
-        final newUser = User(
-          id: userCredential.user!.uid,
-          name: name,
-          email: email,
-          role: role, // Will be either 'doctor' or 'patient'
-          profileImageUrl: null,
-        );
+        // Create base user data
+        Map<String, dynamic> userData = {
+          'name': name,
+          'email': email,
+          'role': additionalInfo?['role'] ?? 'patient',
+          'createdAt': FieldValue.serverTimestamp(),
+        };
+        
+        // Remove role from additionalInfo to avoid duplication
+        if (additionalInfo != null) {
+          final Map<String, dynamic> remainingInfo = Map.from(additionalInfo);
+          remainingInfo.remove('role');
+          
+          // Convert DateTime to Timestamp for Firestore
+          if (remainingInfo['dob'] != null && remainingInfo['dob'] is DateTime) {
+            remainingInfo['dob'] = Timestamp.fromDate(remainingInfo['dob']);
+          }
+          
+          userData.addAll(remainingInfo);
+        }
+        
+        // Save to Firestore
         await _firestore
             .collection('users')
-            .doc(newUser.id)
-            .set(newUser.toJson());
-        _currentUser = newUser;
+            .doc(userCredential.user!.uid)
+            .set(userData);
+        
+        // Create updated User object
+        final userDoc = await _firestore.collection('users').doc(userCredential.user!.uid).get();
+        if (userDoc.exists) {
+          _currentUser = User.fromJson({
+            'id': userCredential.user!.uid,
+            ...userDoc.data()!,
+          });
+        }
+        
         _isLoading = false;
         notifyListeners();
         return true;
@@ -120,10 +142,10 @@ class AuthProvider with ChangeNotifier {
       notifyListeners();
       return false;
     } catch (e) {
-      debugPrint('Error signing up: $e');
+      print('Error signing up: $e');
       _isLoading = false;
       notifyListeners();
-      return false;
+      rethrow; // Rethrow to be caught by UI
     }
   }
 
@@ -131,9 +153,6 @@ class AuthProvider with ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
-
-      // Clear login state in BiometricAuthService
-      await BiometricAuthService.clearLoginState();
 
       // Sign out from Firebase
       await _firebaseAuth.signOut();
@@ -162,7 +181,7 @@ class AuthProvider with ChangeNotifier {
         name: name,
         email: _currentUser!.email,
         role: _currentUser!.role,
-        profileImageUrl: profileImageUrl ?? _currentUser!.profileImageUrl,
+        // profileImageUrl: profileImageUrl ?? _currentUser!.profileImageUrl,
       );
 
       await _firestore.collection('users').doc(_currentUser!.id).update({
@@ -195,7 +214,7 @@ class AuthProvider with ChangeNotifier {
         name: _currentUser!.name,
         email: _currentUser!.email,
         role: role,
-        profileImageUrl: _currentUser!.profileImageUrl,
+        // profileImageUrl: _currentUser!.profileImageUrl,
       );
 
       notifyListeners();
@@ -220,6 +239,41 @@ class AuthProvider with ChangeNotifier {
       return _currentUser != null;
     } catch (e) {
       debugPrint('Error signing in with ID: $e');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> updateUserData(Map<String, dynamic> userData) async {
+    try {
+      if (_currentUser == null) return false;
+      
+      _isLoading = true;
+      notifyListeners();
+
+      // Convert DateTime fields to Timestamp for Firestore
+      final Map<String, dynamic> firestoreData = {...userData};
+      if (firestoreData['dob'] != null && firestoreData['dob'] is DateTime) {
+        firestoreData['dob'] = Timestamp.fromDate(firestoreData['dob']);
+      }
+
+      await _firestore.collection('users').doc(_currentUser!.id).update(firestoreData);
+
+      // Create updated User object
+      final userDoc = await _firestore.collection('users').doc(_currentUser!.id).get();
+      if (userDoc.exists) {
+        _currentUser = User.fromJson({
+          'id': _currentUser!.id,
+          ...userDoc.data()!,
+        });
+      }
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('Error updating user data: $e');
       _isLoading = false;
       notifyListeners();
       return false;

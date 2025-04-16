@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:happ/core/models/record.dart';
+import 'package:happ/core/models/user.dart'; // Add this import
 import 'package:happ/core/providers/auth_provider.dart';
 import 'package:happ/core/providers/records_provider.dart';
 import 'package:happ/ui/widgets/tag_input.dart';
@@ -11,7 +12,10 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 
 class AddRecordScreen extends StatefulWidget {
-  const AddRecordScreen({super.key});
+  final User? patient;
+  final File? initialFile; // Add this parameter
+
+  const AddRecordScreen({super.key, this.patient, this.initialFile});
 
   @override
   State<AddRecordScreen> createState() => _AddRecordScreenState();
@@ -25,12 +29,51 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
   DateTime _selectedDate = DateTime.now();
   List<String> _tags = [];
   final List<Map<String, dynamic>> _files = [];
-  bool _isPrivate = true;
+  final bool _isPrivate = true; // Always private, no option to change
   bool _isLoading = false;
   bool _isUploading = false;
   double _uploadProgress = 0.0;
   String? _errorMessage;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  late User? _currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    // If this screen is opened for a patient by a doctor
+    if (widget.patient != null) {
+      _selectedCategory = 'doctor'; // Set default category to 'doctor'
+      _tags = ['doctor']; // Add the doctor tag by default
+    }
+
+    // Get current user
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    _currentUser = authProvider.currentUser;
+
+    // Process initial file if provided
+    if (widget.initialFile != null) {
+      _processInitialFile();
+    }
+  }
+
+  void _processInitialFile() {
+    final fileName = path.basename(widget.initialFile!.path);
+    setState(() {
+      _files.add({
+        'file': widget.initialFile!,
+        'name': fileName,
+        'size': _getFileSize(widget.initialFile!),
+        'type': _getFileType(fileName),
+        'isUploaded': false,
+      });
+
+      // Set a default title based on file type
+      if (_titleController.text.isEmpty) {
+        _titleController.text =
+            'Scanned Document (${DateFormat('MM/dd/yyyy').format(DateTime.now())})';
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -189,15 +232,22 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
           listen: false,
         );
 
-        final userId = authProvider.currentUser?.id;
-        if (userId == null) {
-          throw Exception("No authenticated user found");
+        // If opened by a doctor for a patient
+        final String userId =
+            widget.patient?.id ?? authProvider.currentUser!.id;
+        if (userId.isEmpty) {
+          throw Exception("No user found");
         }
 
         final fileUrls = await _uploadFilesToStorage(userId);
 
         final now = DateTime.now();
         final id = now.millisecondsSinceEpoch.toString();
+
+        // If this is a doctor adding for a patient, ensure doctor tag
+        if (widget.patient != null && !_tags.contains('doctor')) {
+          _tags.add('doctor');
+        }
 
         final newRecord = Record(
           id: id,
@@ -211,6 +261,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
           isPrivate: _isPrivate,
           createdAt: now,
           updatedAt: now,
+          createdBy: authProvider.currentUser!.id, // Add this line
         );
 
         final success = await recordsProvider.addRecord(newRecord);
@@ -224,7 +275,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
           );
         } else {
           setState(() {
-            _errorMessage = "Failed to add record"; // Replace with actual error message
+            _errorMessage = "Failed to add record";
             _isLoading = false;
           });
         }
@@ -241,9 +292,15 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Custom title based on context
+    final String screenTitle =
+        widget.patient != null
+            ? 'Add Record for ${widget.patient!.name}'
+            : 'Add Record';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Record'),
+        title: Text(screenTitle),
         actions: [
           TextButton(
             onPressed: (_isLoading || _isUploading) ? null : _saveRecord,
@@ -268,21 +325,22 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Error message container
               if (_errorMessage != null) ...[
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.red.shade100,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.error_outline, color: Colors.red.shade800),
+                      const Icon(Icons.error, color: Colors.red),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: Colors.red.shade800),
+                          style: const TextStyle(color: Colors.red),
                         ),
                       ),
                     ],
@@ -290,6 +348,40 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
+
+              // Patient information if doctor is adding a record
+              if (widget.patient != null) ...[
+                Card(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          child: Text(widget.patient!.name.substring(0, 1)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.patient!.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(widget.patient!.email),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+
+              // Title field
               TextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(
@@ -304,66 +396,74 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              Text('Category', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('Medical'),
-                      value: 'medical',
-                      groupValue: _selectedCategory,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedCategory = value!;
-                        });
-                      },
+
+              // Category selection - only show doctor/patient if it's a doctor adding
+              if (_currentUser?.role == 'doctor') ...[
+                Text(
+                  'Category',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: RadioListTile<String>(
+                        title: const Text('Doctor'),
+                        value: 'doctor',
+                        groupValue: _selectedCategory,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedCategory = value!;
+                            // Ensure doctor tag is added when selecting doctor category
+                            if (!_tags.contains('doctor')) {
+                              _tags.add('doctor');
+                            }
+                          });
+                        },
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('Legal'),
-                      value: 'legal',
-                      groupValue: _selectedCategory,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedCategory = value!;
-                        });
-                      },
+                    Expanded(
+                      child: RadioListTile<String>(
+                        title: const Text('Patient'),
+                        value: 'patient',
+                        groupValue: _selectedCategory,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedCategory = value!;
+                            // Remove doctor tag if not a doctor category
+                            _tags.removeWhere((tag) => tag == 'doctor');
+                          });
+                        },
+                      ),
                     ),
+                  ],
+                ),
+              ] else if (_currentUser?.role == 'patient') ...[
+                // For patients, just show patient category as selected and disabled
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                ],
-              ),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Category: ',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Patient',
+                        style: TextStyle(color: Theme.of(context).primaryColor),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              // Rest of your form fields
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('Doctor'),
-                      value: 'doctor',
-                      groupValue: _selectedCategory,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedCategory = value!;
-                        });
-                      },
-                    ),
-                  ),
-                  Expanded(
-                    child: RadioListTile<String>(
-                      title: const Text('Patient'),
-                      value: 'patient',
-                      groupValue: _selectedCategory,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedCategory = value!;
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
+              // Date selector
               InkWell(
                 onTap: () => _selectDate(context),
                 child: InputDecorator(
@@ -376,6 +476,7 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              // Description field
               TextFormField(
                 controller: _descriptionController,
                 decoration: const InputDecoration(
@@ -392,16 +493,21 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                 },
               ),
               const SizedBox(height: 16),
+              // Tags input
               Text('Tags', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               TagInput(
                 tags: _tags,
+                // If doctor is adding for patient, 'doctor' tag should be required
+                requiredTags: widget.patient != null ? ['doctor'] : null,
                 onTagsChanged: (tags) {
                   setState(() {
                     _tags = tags;
                   });
                 },
               ),
+
+              // Rest of your existing document upload and other fields...
               const SizedBox(height: 16),
               Text('Documents', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
@@ -459,16 +565,46 @@ class _AddRecordScreenState extends State<AddRecordScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              SwitchListTile(
-                title: const Text('Private Record'),
-                subtitle: const Text('Only you can access this record'),
-                value: _isPrivate,
-                onChanged: (value) {
-                  setState(() {
-                    _isPrivate = value;
-                  });
-                },
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  'All records are private and only visible to you and your healthcare providers.',
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    color: Colors.grey,
+                    fontSize: 12,
+                  ),
+                ),
               ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: (_isLoading || _isUploading) ? null : _saveRecord,
+                icon:
+                    _isLoading || _isUploading
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Icon(Icons.save),
+                label: Text(
+                  _isLoading || _isUploading ? 'Saving...' : 'Save Record',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(50),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 16),
             ],
           ),
         ),

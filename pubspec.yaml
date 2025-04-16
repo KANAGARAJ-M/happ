@@ -43,6 +43,14 @@ dependencies:
   webview_flutter: ^4.10.0
   syncfusion_flutter_pdfviewer: ^29.1.37
   device_info_plus: ^11.3.3
+  table_calendar: ^3.2.0
+  eth_sig_util: ^0.0.9
+  web3dart:
+  qr_flutter: ^4.1.0
+  share_plus: ^10.1.4
+  firebase_messaging: ^15.2.5
+  flutter_local_notifications: ^19.1.0
+  # firebase_ml_vision:
 
 dev_dependencies:
   flutter_test:

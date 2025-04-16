@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:happ/core/providers/appointment_provider.dart';
 import 'package:happ/core/providers/auth_provider.dart';
-import 'package:happ/core/models/appointment.dart';
 import 'package:happ/core/models/user.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 class AppointmentRequestsScreen extends StatefulWidget {
-  const AppointmentRequestsScreen({Key? key}) : super(key: key);
+  const AppointmentRequestsScreen({super.key});
 
   @override
   State<AppointmentRequestsScreen> createState() => _AppointmentRequestsScreenState();
@@ -20,10 +19,17 @@ class _AppointmentRequestsScreenState extends State<AppointmentRequestsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadAppointments();
+    // Using a post-frame callback to avoid calling setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadAppointments();
+      }
+    });
   }
 
   Future<void> _loadAppointments() async {
+    if (!mounted) return;
+    
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final appointmentProvider = Provider.of<AppointmentProvider>(context, listen: false);
     
@@ -35,7 +41,9 @@ class _AppointmentRequestsScreenState extends State<AppointmentRequestsScreen> {
       await appointmentProvider.fetchPatientAppointments(authProvider.currentUser!.id);
     }
     
-    setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<User?> _fetchUser(String userId) async {
@@ -51,15 +59,67 @@ class _AppointmentRequestsScreenState extends State<AppointmentRequestsScreen> {
   }
 
   Future<void> _updateAppointmentStatus(String appointmentId, String status) async {
-    final appointmentProvider = Provider.of<AppointmentProvider>(context, listen: false);
-    await appointmentProvider.updateAppointmentStatus(appointmentId, status);
+    if (!mounted) return;
+    
+    try {
+      setState(() => _isLoading = true);
+      
+      final appointmentProvider = Provider.of<AppointmentProvider>(context, listen: false);
+      final success = await appointmentProvider.updateAppointmentStatus(appointmentId, status);
+      
+      if (!mounted) return;
+      
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              status == 'confirmed' 
+                ? 'Appointment confirmed successfully' 
+                : status == 'cancelled' 
+                  ? 'Appointment cancelled successfully'
+                  : 'Appointment status updated successfully'
+            ),
+            backgroundColor: status == 'confirmed' ? Colors.green : Colors.blue,
+          ),
+        );
+        
+        // Reload appointments to refresh the list
+        await _loadAppointments();
+      } else {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update appointment status'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final appointmentProvider = Provider.of<AppointmentProvider>(context);
-    final isDoctor = authProvider.currentUser!.role == 'doctor';
+    final isDoctor = authProvider.currentUser?.role == 'doctor' ?? false;
+    
+    // Create a local filtered list instead of filtering in the ListView builder
+    final filteredAppointments = appointmentProvider.appointments.where((appointment) {
+      if (isDoctor) {
+        return appointment.status == 'pending';
+      }
+      return true;
+    }).toList();
     
     return Scaffold(
       appBar: AppBar(
@@ -73,7 +133,7 @@ class _AppointmentRequestsScreenState extends State<AppointmentRequestsScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : appointmentProvider.appointments.isEmpty
+          : filteredAppointments.isEmpty
               ? Center(
                   child: Text(
                     isDoctor ? 'No appointment requests' : 'No appointments scheduled',
@@ -82,9 +142,9 @@ class _AppointmentRequestsScreenState extends State<AppointmentRequestsScreen> {
                 )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: appointmentProvider.appointments.length,
+                  itemCount: filteredAppointments.length,
                   itemBuilder: (context, index) {
-                    final appointment = appointmentProvider.appointments[index];
+                    final appointment = filteredAppointments[index];
                     
                     return FutureBuilder<User?>(
                       future: _fetchUser(isDoctor ? appointment.patientId : appointment.doctorId),
@@ -116,7 +176,7 @@ class _AppointmentRequestsScreenState extends State<AppointmentRequestsScreen> {
                                   children: [
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Date: ${DateFormat('MMM d, yyyy').format(appointment.appointmentDate)} at ${DateFormat('h:mm a').format(appointment.appointmentDate)}',
+                                      'Date: ${DateFormat('MMM d, yyyy').format(appointment.date)} at ${appointment.timeSlot}',
                                     ),
                                     const SizedBox(height: 4),
                                     Container(
@@ -139,13 +199,13 @@ class _AppointmentRequestsScreenState extends State<AppointmentRequestsScreen> {
                                   ],
                                 ),
                               ),
-                              if (appointment.notes.isNotEmpty)
+                              if (appointment.reason.isNotEmpty)
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
                                     vertical: 8,
                                   ),
-                                  child: Text(appointment.notes),
+                                  child: Text(appointment.reason),
                                 ),
                               if (isDoctor && appointment.status == 'pending')
                                 Padding(
@@ -197,12 +257,15 @@ class _AppointmentRequestsScreenState extends State<AppointmentRequestsScreen> {
     );
   }
 
+  // Update the status color method
   Color _getStatusColor(String status) {
     switch (status) {
       case 'pending':
         return Colors.orange;
-      case 'confirmed':
+      case 'confirmed': // Handle both confirmed and approved
+      case 'approved':
         return Colors.green;
+      case 'rejected':
       case 'cancelled':
         return Colors.red;
       case 'completed':

@@ -1,15 +1,33 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:happ/core/models/record.dart';
+import 'package:happ/core/providers/auth_provider.dart';
 import 'package:happ/core/providers/records_provider.dart';
 import 'package:happ/core/services/navigation_service.dart';
+import 'package:happ/core/services/notification_service.dart';
+import 'package:happ/ui/screens/RecordVerificationScreen.dart';
 import 'package:happ/ui/screens/documents/document_viewer_screen.dart';
 import 'package:happ/ui/screens/records/edit_record_screen.dart';
 import 'package:provider/provider.dart';
+import 'package:happ/ui/widgets/medical_term_simplifier.dart';
 
-class RecordDetailScreen extends StatelessWidget {
+class RecordDetailScreen extends StatefulWidget {
   final Record record;
 
   const RecordDetailScreen({super.key, required this.record});
+
+  @override
+  _RecordDetailScreenState createState() => _RecordDetailScreenState();
+}
+
+class _RecordDetailScreenState extends State<RecordDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    
+    // Log access to the record
+    _logRecordAccess();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,9 +36,21 @@ class RecordDetailScreen extends StatelessWidget {
         title: const Text('Record Details'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.verified),
+            tooltip: 'Verify Record Integrity',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RecordVerificationScreen(record: widget.record),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () {
-              NavigationService.navigateTo(EditRecordScreen(record: record));
+              NavigationService.navigateTo(EditRecordScreen(record: widget.record));
             },
           ),
           IconButton(
@@ -44,11 +74,11 @@ class RecordDetailScreen extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          record.category == 'medical'
+                          widget.record.category == 'medical'
                               ? Icons.medical_services
                               : Icons.gavel,
                           color:
-                              record.category == 'medical'
+                              widget.record.category == 'medical'
                                   ? Colors.blue
                                   : Colors.amber,
                           size: 28,
@@ -56,42 +86,61 @@ class RecordDetailScreen extends StatelessWidget {
                         const SizedBox(width: 16),
                         Expanded(
                           child: Text(
-                            record.title,
+                            widget.record.title,
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
                         ),
                       ],
                     ),
                     const Divider(height: 32),
-                    _buildInfoRow('Category', record.categoryName),
-                    _buildInfoRow('Date', record.formattedDate),
+                    _buildInfoRow('Category', widget.record.categoryName),
+                    _buildInfoRow('Date', widget.record.formattedDate),
                     _buildInfoRow(
                       'Privacy',
-                      record.isPrivate ? 'Private' : 'Shared',
+                      widget.record.isPrivate ? 'Private' : 'Shared',
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      'Description',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      record.description,
-                      style: Theme.of(context).textTheme.bodyLarge,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Description',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Card(
+                            elevation: 0,
+                            color: Colors.grey[100],
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: MedicalTermSimplifier(
+                                medicalText: widget.record.description,
+                                textStyle: const TextStyle(fontSize: 16, color: Colors.black),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
 
-            if (record.tags.isNotEmpty) ...[
+            if (widget.record.tags.isNotEmpty) ...[
               Text('Tags', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children:
-                    record.tags
+                    widget.record.tags
                         .map(
                           (tag) => Chip(
                             label: Text(tag),
@@ -106,16 +155,16 @@ class RecordDetailScreen extends StatelessWidget {
             ],
 
             // Update file display section
-            if (record.fileUrls.isNotEmpty) ...[
+            if (widget.record.fileUrls.isNotEmpty) ...[
               const SizedBox(height: 16),
               Text('Documents', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: record.fileUrls.length,
+                itemCount: widget.record.fileUrls.length,
                 itemBuilder: (context, index) {
-                  final file = record.fileUrls[index];
+                  final file = widget.record.fileUrls[index];
                   final fileExtension = _getFileExtension(file);
                   final fileIcon = _getFileIcon(fileExtension);
                   
@@ -132,6 +181,43 @@ class RecordDetailScreen extends StatelessWidget {
                     ),
                   );
                 },
+              ),
+            ],
+
+            // Add this information to the details displayed:
+            if (widget.record.createdBy != null && 
+                widget.record.createdBy != widget.record.userId) ...[
+              Card(
+                color: Colors.blue[50],
+                margin: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.blue),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Healthcare Provider Record',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'This record was added to your profile by a healthcare provider.',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ],
@@ -196,7 +282,7 @@ class RecordDetailScreen extends StatelessWidget {
       );
       
       // Using the removeRecord method instead of deleteRecord
-      final success = await recordsProvider.removeRecord(record.id);
+      final success = await recordsProvider.removeRecord(widget.record.id);
 
       if (success) {
         NavigationService.navigatorKey.currentState?.pop();
@@ -282,6 +368,57 @@ class RecordDetailScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error opening document: $e')),
       );
+    }
+  }
+
+  Future<void> _logRecordAccess() async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final currentUser = authProvider.currentUser;
+      
+      if (currentUser == null || widget.record.userId == currentUser.id) {
+        // Don't log if viewing own records
+        return;
+      }
+      
+      final recordOwner = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.record.userId)
+          .get();
+          
+      if (!recordOwner.exists) return;
+      
+      // Log access in audit trail
+      final accessEntry = {
+        'accessedBy': currentUser.name,
+        'accessorId': currentUser.id,
+        'accessorRole': currentUser.role,
+        'timestamp': FieldValue.serverTimestamp(),
+        'accessType': 'view',
+        'location': 'In-App',
+        'device': 'Mobile App',
+      };
+      
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.record.userId)
+          .collection('records')
+          .doc(widget.record.id)
+          .collection('audit_trail')
+          .add(accessEntry);
+      
+      // Notify the record owner if they're not the current user
+      if (currentUser.id != widget.record.userId) {
+        final notificationService = NotificationService();
+        await notificationService.sendRecordAccessNotification(
+          userId: widget.record.userId,
+          record: widget.record,
+          accessedBy: currentUser.name,
+          accessType: 'viewed',
+        );
+      }
+    } catch (e) {
+      print('Error logging record access: $e');
     }
   }
 }

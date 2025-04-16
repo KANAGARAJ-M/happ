@@ -1,14 +1,33 @@
 import 'package:flutter/material.dart';
 
 class NavigationService {
-  static final GlobalKey<NavigatorState> navigatorKey =
-      GlobalKey<NavigatorState>();
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+  static NavigatorState? get navigator => navigatorKey.currentState;
+
+  static Future<dynamic> navigateTo(Widget screen) {
+    // Wrap the screen in a Material widget to ensure Material context
+    return navigator!.push(
+      MaterialPageRoute(
+        builder: (context) => screen,
+      ),
+    );
+  }
+
+  static Future<dynamic> navigateToAndClearStack(Widget screen) {
+    return navigator!.pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => screen,
+      ),
+      (route) => false,
+    );
+  }
 
   static bool get isNavigatorReady =>
       navigatorKey.currentState != null && navigatorKey.currentContext != null;
 
   // Safe navigation methods with null checks
-  static Future<T?> navigateTo<T extends Object?>(Widget page) {
+  static Future<T?> navigateToSafe<T extends Object?>(Widget page) {
     if (!isNavigatorReady) {
       debugPrint('NavigationService: Navigator is not ready');
       throw Exception('Navigator is not ready');
@@ -26,17 +45,6 @@ class NavigationService {
     }
     return navigatorKey.currentState!.pushReplacement(
       MaterialPageRoute(builder: (context) => page),
-    );
-  }
-
-  static Future<T?> navigateToAndClearStack<T extends Object?>(Widget page) {
-    if (!isNavigatorReady) {
-      debugPrint('NavigationService: Navigator is not ready');
-      throw Exception('Navigator is not ready');
-    }
-    return navigatorKey.currentState!.pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => page),
-      (route) => false,
     );
   }
 

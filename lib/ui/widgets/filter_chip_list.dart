@@ -14,26 +14,27 @@ class FilterChipList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children:
-            options.entries.map((entry) {
-              final isSelected = selected == entry.key;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: FilterChip(
-                  selected: isSelected,
-                  label: Text(entry.value),
-                  onSelected: (_) => onSelected(entry.key),
-                  backgroundColor: Colors.grey[200],
-                  selectedColor: Theme.of(
-                    context,
-                  ).primaryColor.withOpacity(0.2),
-                  checkmarkColor: Theme.of(context).primaryColor,
-                ),
-              );
-            }).toList(),
+    return Material(
+      // Add a Material widget to wrap the entire component
+      color: Colors.transparent, // Make it transparent to not affect visuals
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: options.entries.map((entry) {
+            final isSelected = selected == entry.key;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: FilterChip(
+                selected: isSelected,
+                label: Text(entry.value),
+                onSelected: (_) => onSelected(entry.key),
+                backgroundColor: Colors.grey[200],
+                selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
+                checkmarkColor: Theme.of(context).primaryColor,
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }

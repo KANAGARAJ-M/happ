@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:happ/core/providers/appointment_provider.dart';
+import 'package:happ/core/services/notification_service.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
@@ -14,6 +15,17 @@ import 'package:flutter/services.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Initialize notification service with error handling
+  try {
+    await NotificationService().init();
+  } catch (e) {
+    // Don't let notification initialization failure crash the app
+    debugPrint('Failed to initialize notifications: $e');
+  }
   
   // Try to load the plugins explicitly
   try {
@@ -21,10 +33,6 @@ Future<void> main() async {
   } catch (e) {
     // Ignore errors - this is just to ensure the plugin is loaded
   }
-  
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
   
   // Only set persistence on web
   if (kIsWeb) {

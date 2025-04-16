@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:happ/core/models/user.dart';
+import 'package:happ/ui/screens/doctor/doctor_bookings_screen.dart';
+import 'package:happ/ui/screens/doctor/doctor_dashboard_screen.dart';
+import 'package:happ/ui/screens/doctor/doctor_profile_screen.dart';
 import 'package:happ/ui/screens/doctor/patient_list_screen.dart';
+import 'package:happ/ui/screens/notifications/notification_history_screen.dart';
+import 'package:happ/ui/screens/patient/doctor_list_screen.dart';
+import 'package:happ/ui/screens/patient/my_appointments_screen.dart';
+import 'package:happ/ui/screens/patient/patient_dashboard_screen.dart';
+import 'package:happ/ui/screens/patient/patient_profile_screen.dart';
+import 'package:happ/ui/screens/patient/settings_screen.dart';
 import 'package:happ/ui/screens/records/record_detail_screen.dart';
+import 'package:happ/ui/widgets/notification_badge.dart';
 import 'package:provider/provider.dart';
 import 'package:happ/core/providers/auth_provider.dart';
 import 'package:happ/core/providers/records_provider.dart';
@@ -9,10 +19,7 @@ import 'package:happ/core/services/navigation_service.dart';
 import 'package:happ/core/models/record.dart' as model;
 import 'package:happ/ui/screens/auth/login_screen.dart';
 import 'package:happ/ui/screens/records/record_list_screen.dart';
-import 'package:happ/ui/screens/records/add_record_screen.dart';
-import 'package:happ/ui/screens/profile_screen.dart';
 import 'package:happ/ui/screens/scan_document_screen.dart';
-import 'package:happ/ui/screens/search_screen.dart';
 import 'package:happ/ui/screens/appointments/appointment_requests_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,7 +36,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final recordsProvider = Provider.of<RecordsProvider>(context, listen: false);
+      final recordsProvider = Provider.of<RecordsProvider>(
+        context,
+        listen: false,
+      );
       // Force reload records if not already loaded
       if (!recordsProvider.initialized) {
         _loadRecordsIfNeeded();
@@ -38,12 +48,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadRecordsIfNeeded() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final recordsProvider = Provider.of<RecordsProvider>(context, listen: false);
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final recordsProvider = Provider.of<RecordsProvider>(context, listen: false);
 
-    if (authProvider.currentUser != null) {
-      print("Loading records from HomeScreen for user ${authProvider.currentUser!.id}");
-      await recordsProvider.fetchRecords(authProvider.currentUser!.id);
+      if (authProvider.currentUser != null) {
+        print("Loading records from HomeScreen for user ${authProvider.currentUser!.id}");
+        // Use the fetchRecordsWithPermissions method
+        await recordsProvider.fetchRecordsWithPermissions(
+          authProvider.currentUser!.id,
+          authProvider.currentUser!.role,
+        );
+      }
+    } catch (e) {
+      print("Error loading dashboard data: $e");
+      // Don't rethrow to prevent app crashes
     }
   }
 
@@ -70,18 +89,43 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = authProvider.currentUser;
     final records = recordsProvider.records;
 
-    // Screens for bottom navigation
-    final List<Widget> screens = [
-      _buildDashboard(user, records),
-      const RecordListScreen(),
-      const SearchScreen(),
-      const ProfileScreen(),
-    ];
+    // Initialize screens based on user role
+    final List<Widget> screens;
+    if (authProvider.currentUser?.role == 'doctor') {
+      screens = [
+        const DoctorDashboardScreen(),
+        const PatientListScreen(),
+        const AppointmentRequestsScreen(),
+        const DoctorProfileScreen(), // Use DoctorProfileScreen for doctors
+      ];
+    } else {
+      screens = [
+        const PatientDashboardScreen(),
+        const RecordListScreen(),
+        const PatientProfileScreen(),
+      ];
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('MedicoLegal Records'),
         actions: [
+          // Add notification icon with badge
+          NotificationBadge(
+            badgeColor: Theme.of(context).colorScheme.error,
+            child: IconButton(
+              icon: const Icon(Icons.notifications),
+              tooltip: 'Notifications',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NotificationHistoryScreen(),
+                  ),
+                );
+              },
+            ),
+          ),
           IconButton(icon: const Icon(Icons.logout), onPressed: _signOut),
         ],
       ),
@@ -93,37 +137,36 @@ class _HomeScreenState extends State<HomeScreen> {
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(
             icon: Icon(Icons.dashboard),
             label: 'Dashboard',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.folder), label: 'Records'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          if (authProvider.currentUser?.role == 'patient')
+            const BottomNavigationBarItem(icon: Icon(Icons.folder), label: 'Records'),
+          if (authProvider.currentUser?.role == 'doctor')
+            const BottomNavigationBarItem(icon: Icon(Icons.people), label: 'My Patients'),
+          if (authProvider.currentUser?.role == 'doctor')
+            const BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Requests'),
+          const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          NavigationService.navigateTo(const AddRecordScreen());
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Record'),
-      ),
+      // floatingActionButton: FloatingActionButton.extended(
+      //   onPressed: () {
+      //     NavigationService.navigateTo(const AddRecordScreen());
+      //   },
+      //   icon: const Icon(Icons.add),
+      //   label: const Text('Add Record'),
+      // ),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: <Widget>[
             DrawerHeader(
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-              ),
+              decoration: BoxDecoration(color: Theme.of(context).primaryColor),
               child: Text(
                 'Menu',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 24),
               ),
             ),
             ListTile(
@@ -171,14 +214,74 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
+            if (authProvider.currentUser?.role == 'patient')
               ListTile(
-                leading: const Icon(Icons.calendar_today),
-                title: const Text('Appointments'),
+                leading: const Icon(Icons.settings),
+                title: const Text('Settings'),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+            if (authProvider.currentUser?.role == 'doctor')
+              ListTile(
+                leading: const Icon(Icons.calendar_today),
+                title: const Text('Appointment Requests'),
+                onTap: () {
+                  Navigator.pop(context); // Close drawer
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
                       builder: (context) => const AppointmentRequestsScreen(),
+                    ),
+                  );
+                },
+              ),
+
+            if (authProvider.currentUser?.role == 'doctor')
+              ListTile(
+                leading: const Icon(Icons.book),
+                title: const Text('Confirmed Appointments'),
+                onTap: () {
+                  Navigator.pop(context); // Close drawer
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DoctorBookingsScreen(),
+                    ),
+                  );
+                },
+              ),
+
+            if (authProvider.currentUser?.role == 'patient')
+              ListTile(
+                leading: const Icon(Icons.calendar_today),
+                title: const Text('Book Appointment'),
+                onTap: () {
+                  Navigator.pop(context); // Close drawer
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DoctorListScreen(),
+                    ),
+                  );
+                },
+              ),
+            if (authProvider.currentUser?.role == 'patient')
+              ListTile(
+                leading: const Icon(Icons.calendar_month, color: Colors.blue),
+                title: const Text('My Appointments'),
+                subtitle: const Text('View and manage your appointments'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const MyAppointmentsScreen(),
                     ),
                   );
                 },
@@ -188,6 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
   Widget _buildDashboard(User? user, List<model.Record> records) {
     final recordsProvider = Provider.of<RecordsProvider>(context);
 
@@ -390,5 +494,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
-

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:happ/ui/screens/auth/registration_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:happ/core/providers/auth_provider.dart';
-import 'package:happ/ui/screens/auth/register_screen.dart';
 import 'package:happ/ui/screens/home_screen.dart';
 import 'package:happ/ui/widgets/app_button.dart';
-import 'package:happ/core/services/biometric_auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -40,50 +39,6 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
 
         if (success) {
-          // First save credentials regardless of biometric choice
-          await BiometricAuthService.saveUserLoginState(
-            authProvider.currentUser!.id,
-            email,
-            password,
-          );
-
-          // Now check biometrics
-          final isBiometricsAvailable =
-              await BiometricAuthService.isBiometricsAvailable();
-
-          if (isBiometricsAvailable) {
-            // Ask user if they want to enable biometric authentication
-            final shouldEnableBiometrics =
-                await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Enable Biometric Login'),
-                    content: const Text(
-                      'Would you like to use fingerprint or face recognition to log in next time?',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text('NO'),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: const Text('YES'),
-                      ),
-                    ],
-                  ),
-                ) ??
-                false;
-
-            if (shouldEnableBiometrics) {
-              debugPrint('Enabling biometrics for user: ${authProvider.currentUser!.id}');
-              final biometricsEnabled = await BiometricAuthService.enableBiometrics(
-                authProvider.currentUser!.id,
-              );
-              debugPrint('Biometrics enabled: $biometricsEnabled');
-            }
-          }
-
           // Navigate to home screen
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -203,24 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     isLoading: authProvider.isLoading,
                     icon: Icons.login,
                   ),
-                  const SizedBox(height: 16),
 
-                  // Alternative login method
-                  OutlinedButton(
-                    onPressed: () {
-                      // Just for testing button visibility
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Button is working!')),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    child: const Text(
-                      'Login with Google',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  ),
                   const SizedBox(height: 24),
 
                   // Register link
@@ -233,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) => const RegisterScreen(),
+                              builder: (_) => const RegistrationScreen(),
                             ),
                           );
                         },

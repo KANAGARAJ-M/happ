@@ -17,27 +17,38 @@ class DocumentService {
     required String title,
     required String content,
     required String category,
-    required File? imageFile,
+    File? imageFile,
     required List<String> tags,
+    bool isPrivate = true,
+    required String createdBy, // Make this required to avoid null errors
   }) async {
     try {
+      // Upload image if provided
       String? imageUrl;
       if (imageFile != null) {
-        imageUrl = await uploadImage(userId, imageFile);
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}_${path.basename(imageFile.path)}';
+        final ref = _storage.ref().child('records/$userId/$fileName');
+        final uploadTask = ref.putFile(imageFile);
+        await uploadTask.whenComplete(() {});
+        imageUrl = await ref.getDownloadURL();
       }
 
+      final now = DateTime.now();
+      
+      // Create record
       final record = Record(
-        id: '',
+        id: '', // ID will be assigned by Firestore
         userId: userId,
         title: title,
         description: content,
         category: category,
-        date: DateTime.now(),
+        date: now,
         tags: tags,
         fileUrls: imageUrl != null ? [imageUrl] : [],
-        isPrivate: false,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        isPrivate: true, // Always force to private
+        createdAt: now,
+        updatedAt: now,
+        createdBy: createdBy, // Set creator ID
       );
 
       // Save to the correct collection path
@@ -47,21 +58,57 @@ class DocumentService {
           .collection('records')
           .add(record.toJson());
 
-      return Record(
-        id: docRef.id,
-        userId: record.userId,
-        title: record.title,
-        description: record.description,
-        category: record.category,
-        date: record.date,
-        tags: record.tags,
-        fileUrls: record.fileUrls,
-        isPrivate: record.isPrivate,
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt,
-      );
+      return record.copyWith(id: docRef.id);
     } catch (e) {
       debugPrint('Error saving scanned document: $e');
+      return null;
+    }
+  }
+
+  // Add this method to handle scanned documents with privacy
+  Future<Record?> savePrivateScannedDocument({
+    required String userId,
+    required String title,
+    required String content,
+    required String category,
+    required List<String> tags,
+    File? imageFile,
+    bool isPrivate = true, // Force private by default
+  }) async {
+    try {
+      // Create a unique ID for the record
+      final String recordId = DateTime.now().millisecondsSinceEpoch.toString();
+      
+      // Create record data
+      final now = DateTime.now();
+      
+      // Define the record
+      final record = Record(
+        id: recordId,
+        userId: userId,
+        title: title,
+        description: content,
+        category: category,
+        date: now,
+        tags: tags,
+        fileUrls: [], // Will be updated later after image upload
+        isPrivate: true, // Always make private
+        createdAt: now,
+        updatedAt: now,
+      );
+      
+      // Save to Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('records')
+          .doc(recordId)
+          .set(record.toJson());
+      
+      // Return the record
+      return record;
+    } catch (e) {
+      print('Error saving scanned document: $e');
       return null;
     }
   }

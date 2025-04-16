@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import 'package:happ/core/services/navigation_service.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:happ/core/services/document_service.dart';
@@ -177,6 +175,8 @@ class _ScanDocumentScreenState extends State<ScanDocumentScreen> {
         category: 'medical',
         imageFile: _imageFile,
         tags: ['scanned', 'document'],
+        isPrivate: true, // Always make scanned documents private
+        createdBy: authProvider.currentUser!.id, // Explicitly set creator
       );
 
       // Debug checks

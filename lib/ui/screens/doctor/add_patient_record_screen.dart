@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:happ/core/models/record.dart';
 import 'package:happ/core/models/user.dart';
 import 'package:happ/core/providers/records_provider.dart';
+import 'package:happ/core/providers/auth_provider.dart'; // Keep only one import
 import 'package:happ/ui/widgets/tag_input.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
@@ -10,10 +11,13 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 
+// Remove the duplicate import below
+// import 'package:happ/core/providers/auth_provider.dart';
+
 class AddPatientRecordScreen extends StatefulWidget {
   final User patient;
 
-  const AddPatientRecordScreen({Key? key, required this.patient}) : super(key: key);
+  const AddPatientRecordScreen({super.key, required this.patient});
 
   @override
   State<AddPatientRecordScreen> createState() => _AddPatientRecordScreenState();
@@ -23,12 +27,12 @@ class _AddPatientRecordScreenState extends State<AddPatientRecordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  String _selectedCategory = 'doctor';
+  final String _selectedCategory = 'doctor';
   DateTime _selectedDate = DateTime.now();
   DateTime? _nextAppointmentDate;
   List<String> _tags = ['doctor']; // Default tag for doctor-created records
   final List<String> _fileUrls = [];
-  bool _isPrivate = false;
+  final bool _isPrivate = true; // Always private by default
   bool _isLoading = false;
   bool _isUploading = false;
   double _uploadProgress = 0.0;
@@ -186,6 +190,7 @@ class _AddPatientRecordScreenState extends State<AddPatientRecordScreen> {
         isPrivate: _isPrivate,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
+        createdBy: Provider.of<AuthProvider>(context, listen: false).currentUser!.id,
       );
 
       final newRecord = await recordsProvider.addRecord(record);
@@ -332,17 +337,16 @@ class _AddPatientRecordScreenState extends State<AddPatientRecordScreen> {
                     ),
                   ],
                   const SizedBox(height: 16),
-                  SwitchListTile(
-                    title: const Text('Private Record'),
-                    subtitle: const Text(
-                      'Only you and the patient can view this record',
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text(
+                      'All records are private and only visible to you and the patient.',
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey,
+                        fontSize: 12,
+                      ),
                     ),
-                    value: _isPrivate,
-                    onChanged: (value) {
-                      setState(() {
-                        _isPrivate = value;
-                      });
-                    },
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
