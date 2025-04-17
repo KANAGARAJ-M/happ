@@ -23,6 +23,15 @@
 -dontwarn com.google.mlkit.vision.text.japanese.**
 -dontwarn com.google.mlkit.vision.text.korean.**
 
+# Prevent R8 from failing on missing FirebaseInstanceId (used by ML Kit)
+-dontwarn com.google.firebase.iid.**
+-dontwarn com.google.mlkit.linkfirebase.internal.**
+-dontwarn com.google.android.gms.internal.mlkit_linkfirebase.**
+
+# Keep all Firebase and Google classes (for safety)
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+
 # General optimization rules
 -optimizations !code/simplification/arithmetic,!code/simplification/cast,!field/*,!class/merging/*
 -optimizationpasses 5

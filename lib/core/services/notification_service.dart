@@ -21,6 +21,26 @@ class NotificationService {
   static const String appointmentChannelId = 'appointments_channel';
   static const String recordsChannelId = 'records_access_channel';
   static const String medicalInsightsChannelId = 'medical_insights_channel';
+
+  Future<void> sendNotification({
+    required String userId,
+    required String title,
+    required String body,
+    Map<String, dynamic>? additionalData,
+  }) async {
+    try {
+      // Implementation to send notification to a user
+      // This could involve FCM or another notification service
+      // For example, storing the notification in Firestore for the user
+      // or using FCM topics to send to specific users
+      
+      debugPrint('Sending notification to user $userId: $title');
+      // Add your actual implementation here
+      
+    } catch (e) {
+      debugPrint('Error sending notification: $e');
+    }
+  }
   
   // Initialize the notification services
   Future<void> init() async {
