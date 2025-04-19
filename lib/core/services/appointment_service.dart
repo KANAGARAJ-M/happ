@@ -16,6 +16,24 @@ class AppointmentService {
     }
   }
 
+  Future<bool> cancelAppointmentWithReason(String appointmentId, String reason) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('appointments')
+          .doc(appointmentId)
+          .update({
+            'status': 'cancelled',
+            'cancellationReason': reason,
+            'cancelledAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+      return true;
+    } catch (e) {
+      print('Error cancelling appointment: $e');
+      return false;
+    }
+  }
+
   // Get patient's appointments
   Stream<List<Appointment>> getPatientAppointments(String patientId) {
     return _firestore

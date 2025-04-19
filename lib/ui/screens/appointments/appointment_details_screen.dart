@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:happ/core/models/appointment.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import 'package:happ/core/providers/auth_provider.dart';
 
 class AppointmentDetailsScreen extends StatelessWidget {
   final String appointmentId;
@@ -10,6 +12,10 @@ class AppointmentDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final currentUser = authProvider.currentUser;
+    final isDoctor = currentUser?.role == 'doctor';
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Appointment Details'),
@@ -90,7 +96,7 @@ class AppointmentDetailsScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             width: double.infinity,
-                            child: Text(appointment.reason),
+                            child: Text(appointment.reason,style: TextStyle(color: Colors.black,fontWeight: FontWeight.w900),),
                           ),
                         ],
                       ],
@@ -100,7 +106,7 @@ class AppointmentDetailsScreen extends StatelessWidget {
                 
                 const SizedBox(height: 24),
                 
-                // Actions based on appointment status
+                // Actions based on appointment status AND user role
                 if (appointment.status == 'pending') ...[
                   const Text(
                     'Appointment Actions',
@@ -112,22 +118,27 @@ class AppointmentDetailsScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   Row(
                     children: [
+                      // Everyone can cancel
                       Expanded(
                         child: OutlinedButton(
-                          onPressed: () => _updateStatus(context, appointment.id, 'cancelled'),
+                          onPressed: () => _showCancellationDialog(context, appointment.id),
                           child: const Text('Cancel'),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () => _updateStatus(context, appointment.id, 'confirmed'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
+                      
+                      // Only doctors can confirm appointments
+                      if (isDoctor) ...[
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => _updateStatus(context, appointment.id, 'confirmed'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                            ),
+                            child: const Text('Confirm'),
                           ),
-                          child: const Text('Confirm'),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ]
@@ -136,7 +147,7 @@ class AppointmentDetailsScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      onPressed: () => _updateStatus(context, appointment.id, 'cancelled'),
+                      onPressed: () => _showCancellationDialog(context, appointment.id),
                       child: const Text('Cancel Appointment'),
                     ),
                   ),
@@ -190,15 +201,28 @@ class AppointmentDetailsScreen extends StatelessWidget {
     }
   }
   
-  Future<void> _updateStatus(BuildContext context, String appointmentId, String status) async {
+  Future<void> _updateStatus(
+    BuildContext context, 
+    String appointmentId, 
+    String status, 
+    [String? cancellationReason]
+  ) async {
     try {
+      final updateData = {
+        'status': status,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      
+      // Add cancellation reason if provided
+      if (status == 'cancelled' && cancellationReason != null) {
+        updateData['cancellationReason'] = cancellationReason;
+        updateData['cancelledAt'] = FieldValue.serverTimestamp();
+      }
+      
       await FirebaseFirestore.instance
           .collection('appointments')
           .doc(appointmentId)
-          .update({
-        'status': status,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+          .update(updateData);
       
       if (context.mounted) {
         Navigator.pop(context);
@@ -219,5 +243,66 @@ class AppointmentDetailsScreen extends StatelessWidget {
         );
       }
     }
+  }
+  
+  Future<void> _showCancellationDialog(BuildContext context, String appointmentId) async {
+    final TextEditingController reasonController = TextEditingController();
+    
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Appointment Cancellation'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Please provide a reason for cancellation:'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: reasonController,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter reason',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Back'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              child: const Text('Submit'),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                if (reasonController.text.trim().isNotEmpty) {
+                  _updateStatus(
+                    context, 
+                    appointmentId, 
+                    'cancelled',
+                    reasonController.text.trim()
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please provide a reason for cancellation'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 }

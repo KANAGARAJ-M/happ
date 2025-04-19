@@ -52,7 +52,16 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     'Psychiatry',
     'Pulmonology',
     'Radiology',
-    'Urology'
+    'Urology',
+    'ENT', // Adding Ear, Nose & Throat specialty
+    'Rheumatology',
+    'Nephrology',
+    'Hematology',
+    'Infectious Disease',
+    'Allergy & Immunology',
+    'Physical Medicine',
+    'Emergency Medicine',
+    'Family Medicine'
   ];
   
   @override

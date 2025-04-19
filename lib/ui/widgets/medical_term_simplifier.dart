@@ -9,12 +9,12 @@ class MedicalTermSimplifier extends StatefulWidget {
   final bool initiallySimplified;
 
   const MedicalTermSimplifier({
-    Key? key,
+    super.key,
     required this.medicalText,
     this.textStyle,
     this.simplifiedStyle,
     this.initiallySimplified = true,
-  }) : super(key: key);
+  });
 
   @override
   State<MedicalTermSimplifier> createState() => _MedicalTermSimplifierState();

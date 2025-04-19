@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:happ/core/providers/auth_provider.dart';
-import 'package:happ/core/services/navigation_service.dart';
 import 'package:happ/ui/screens/records/record_detail_screen.dart';
 import 'package:happ/ui/screens/appointments/appointment_details_screen.dart';
 import 'package:happ/core/models/record.dart'; // Import your Record model

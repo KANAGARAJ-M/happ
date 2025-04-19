@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class EmergencyAlert {
   final String id;
@@ -25,7 +24,7 @@ class EmergencyAlert {
     required this.notifiedContacts,
     this.additionalInfo,
     this.resolvedBy,
-    this.resolvedAt,
+    this.resolvedAt, required bool hasLocation,
   });
 
   factory EmergencyAlert.fromJson(Map<String, dynamic> json) {
@@ -45,6 +44,7 @@ class EmergencyAlert {
       resolvedAt: json['resolvedAt'] is Timestamp 
           ? (json['resolvedAt'] as Timestamp).toDate()
           : null,
+      hasLocation: json['location'] != null,
     );
   }
 

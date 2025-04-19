@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Record {
   final String id;
@@ -35,30 +36,30 @@ class Record {
       category.substring(0, 1).toUpperCase() + category.substring(1);
 
   factory Record.fromJson(Map<String, dynamic> json) {
-    // Parse the creation date, update date, and record date
-    DateTime createdAt = json['createdAt'] is String 
-        ? DateTime.parse(json['createdAt']) 
-        : (json['createdAt'] ?? DateTime.now());
-    
-    DateTime updatedAt = json['updatedAt'] is String 
-        ? DateTime.parse(json['updatedAt']) 
-        : (json['updatedAt'] ?? DateTime.now());
-    
-    DateTime date = json['date'] is DateTime 
-        ? json['date'] 
-        : DateTime.parse(json['date'] ?? DateTime.now().toIso8601String());
-    
+    DateTime parseDate(dynamic value) {
+      if (value == null) return DateTime.now();
+      if (value is Timestamp) return value.toDate();
+      if (value is String) return DateTime.parse(value);
+      if (value is DateTime) return value;
+      throw Exception('Invalid date type');
+    }
+
+    // Parse the dates robustly
+    final createdAt = parseDate(json['createdAt']);
+    final updatedAt = parseDate(json['updatedAt']);
+    final date = parseDate(json['date']);
+
     // Parse the list of tags and file URLs
     List<String> tags = [];
     if (json['tags'] != null) {
       tags = List<String>.from(json['tags']);
     }
-    
+
     List<String> fileUrls = [];
     if (json['fileUrls'] != null) {
       fileUrls = List<String>.from(json['fileUrls']);
     }
-    
+
     return Record(
       id: json['id'] ?? '',
       userId: json['userId'] ?? '',

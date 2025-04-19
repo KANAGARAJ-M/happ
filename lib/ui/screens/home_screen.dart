@@ -185,20 +185,38 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pop(context);
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.search),
-              title: const Text('Search'),
-              onTap: () {
-                _onItemTapped(2);
-                Navigator.pop(context);
-              },
-            ),
+            // ListTile(
+            //   leading: const Icon(Icons.search),
+            //   title: const Text('Search'),
+            //   onTap: () {
+            //     _onItemTapped(2);
+            //     Navigator.pop(context);
+            //   },
+            // ),
+            if (authProvider.currentUser?.role == 'patient')
             ListTile(
               leading: const Icon(Icons.person),
               title: const Text('Profile'),
               onTap: () {
-                _onItemTapped(3);
-                Navigator.pop(context);
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PatientProfileScreen(),
+                    ),
+                  );
+              },
+            ),
+            if (authProvider.currentUser?.role == 'doctor')
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DoctorProfileScreen(),
+                    ),
+                  );
               },
             ),
             if (authProvider.currentUser?.role == 'doctor')

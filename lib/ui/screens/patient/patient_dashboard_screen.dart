@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:flutter/material.dart';
 import 'package:happ/ui/screens/notifications/notification_history_screen.dart';
+import 'package:happ/ui/screens/patient/ai/AISchedulingAssistant.dart';
+import 'package:happ/ui/screens/patient/emergency/sos_emergency_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -16,6 +18,7 @@ import 'package:happ/ui/screens/records/record_detail_screen.dart';
 import 'package:happ/ui/screens/records/record_list_screen.dart';
 import 'package:happ/ui/screens/records/add_record_screen.dart';
 import 'package:happ/ui/screens/scan_document_screen.dart';
+import 'package:happ/ui/screens/patient/ai/PersonalHealthAssistant.dart';
 
 class PatientDashboardScreen extends StatefulWidget {
   const PatientDashboardScreen({super.key});
@@ -454,6 +457,38 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                                         () => NavigationService.navigateTo(
                                           const RecordListScreen(),
                                         ),
+                                      ),
+                                      _buildQuickAction(
+                                        context,
+                                        Icons.assistant,
+                                        'AI Booking',
+                                        Colors.green,
+                                        () => NavigationService.navigateTo(
+                                          const AISchedulingAssistant(),
+                                        ),
+                                      ),
+                                      _buildQuickAction(
+                                        context,
+                                        Icons.health_and_safety,
+                                        'AI Health Assistant',
+                                        Colors.teal,
+                                        () => NavigationService.navigateTo(
+                                          const PersonalHealthAssistant(),
+                                        ),
+                                      ),
+                                      _buildQuickAction(
+                                        context,
+                                        Icons.emergency,
+                                        'SOS',
+                                        Colors.red,
+                                        () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => const SOSEmergencyScreen(),
+                                            ),
+                                          );
+                                        },
                                       ),
                                     ],
                                   );

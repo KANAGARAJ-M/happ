@@ -10,6 +10,51 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 
+class AadhaarNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Remove any existing spaces
+    final newText = newValue.text.replaceAll(' ', '');
+    
+    if (newText.isEmpty) {
+      return newValue.copyWith(
+        text: '',
+        selection: const TextSelection.collapsed(offset: 0),
+      );
+    }
+    
+    // Add spaces after every 4 digits
+    final buffer = StringBuffer();
+    for (int i = 0; i < newText.length; i++) {
+      // Add a space after positions 3 and 7
+      if (i > 0 && i % 4 == 0 && i < 8) {
+        buffer.write(' ');
+      }
+      buffer.write(newText[i]);
+    }
+    
+    final formattedText = buffer.toString();
+    
+    // Calculate cursor position
+    int cursorPos = newValue.selection.end + (formattedText.length - newValue.text.length);
+    
+    // Ensure cursor position is valid
+    if (cursorPos < 0) {
+      cursorPos = 0;
+    } else if (cursorPos > formattedText.length) {
+      cursorPos = formattedText.length;
+    }
+    
+    return TextEditingValue(
+      text: formattedText,
+      selection: TextSelection.collapsed(offset: cursorPos),
+    );
+  }
+}
+
 class PatientProfileScreen extends StatefulWidget {
   final User? patient; // Add this parameter for doctors viewing patient profiles
   final bool viewOnly; // Add this to control edit functionality
@@ -580,13 +625,13 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                       prefixIcon: const Icon(Icons.badge),
                       border: OutlineInputBorder(),
                       filled: true,
-                      fillColor: Colors.grey[200],
+                      // fillColor: Colors.grey[200],
                     ),
                     child: Text(
                       user.patientId ?? 'Not assigned',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: user.patientId != null ? Colors.black : Colors.grey,
+                        color: user.patientId != null ? Colors.white : Colors.red,
                       ),
                     ),
                   ),
@@ -677,15 +722,19 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   labelText: 'Aadhaar Number',
                   prefixIcon: Icon(Icons.card_membership),
                   border: OutlineInputBorder(),
+                  hintText: '1234 5678 9012', // Add hint text to show format
                 ),
                 enabled: !widget.viewOnly && _isEditing,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(12),
+                  AadhaarNumberFormatter(), // Add the custom formatter
                 ],
                 validator: (value) {
-                  if (value != null && value.isNotEmpty && value.length != 12) {
+                  // Remove spaces before validation
+                  final digitsOnly = value?.replaceAll(' ', '') ?? '';
+                  if (value != null && value.isNotEmpty && digitsOnly.length != 12) {
                     return 'Aadhaar number must be 12 digits';
                   }
                   return null;

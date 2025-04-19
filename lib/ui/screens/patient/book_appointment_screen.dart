@@ -165,6 +165,31 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       
       final currentUser = authProvider.currentUser!;
       
+      // Add this before creating a new appointment
+      final hasExistingAppointment = await _checkExistingAppointments(
+        currentUser.id,
+        _selectedDate
+      );
+
+      if (hasExistingAppointment) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'You already have an appointment scheduled on this date. Please select another date.';
+        });
+        
+        // Scroll to top to show error
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Scrollable.ensureVisible(
+            _formKey.currentContext!,
+            alignment: 0.0,
+            duration: const Duration(milliseconds: 400),
+          );
+        });
+        
+        return; // Stop the booking process
+      }
+
+      // If no existing appointment, proceed with booking
       final appointment = Appointment(
         id: '',
         patientId: currentUser.id,
@@ -205,6 +230,53 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     }
   }
   
+  Future<bool> _checkExistingAppointments(String userId, DateTime date) async {
+    // Format the date to compare only year, month, day
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+    
+    final snapshot = await FirebaseFirestore.instance
+      .collection('appointments')
+      .where('patientId', isEqualTo: userId)
+      .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+      .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+      .where('status', whereIn: ['pending', 'confirmed']) // Only check active appointments
+      .get();
+    
+    return snapshot.docs.isNotEmpty;
+  }
+  
+  Future<List<String>> _getAvailableTimeSlots(String doctorId, DateTime date) async {
+    // Define all possible time slots
+    final allTimeSlots = [
+      '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM',
+      '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM',
+      '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM',
+      '4:00 PM', '4:30 PM'
+    ];
+    
+    // Format the date to compare only year, month, day
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+    
+    // Get all booked appointments for this doctor on this date
+    final snapshot = await FirebaseFirestore.instance
+      .collection('appointments')
+      .where('doctorId', isEqualTo: doctorId)
+      .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+      .where('date', isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+      .where('status', whereIn: ['pending', 'confirmed']) // Only active appointments
+      .get();
+    
+    // Extract booked time slots
+    final bookedTimeSlots = snapshot.docs
+      .map((doc) => (doc.data()['timeSlot'] as String))
+      .toList();
+    
+    // Filter out the booked slots
+    return allTimeSlots.where((slot) => !bookedTimeSlots.contains(slot)).toList();
+  }
+  
   bool _isDateSelectable(DateTime day) {
     // Allow only future dates (including today)
     final now = DateTime.now();
@@ -237,25 +309,18 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (_errorMessage != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.shade200),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.error_outline, color: Colors.red.shade700),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _errorMessage!,
-                                style: TextStyle(color: Colors.red.shade700),
-                              ),
-                            ),
-                          ],
+                      AnimatedSlide(
+                        offset: Offset(0, _errorMessage == null ? -1.0 : 0.0),
+                        duration: const Duration(milliseconds: 300),
+                        child: ErrorMessage(
+                          message: _errorMessage!,
+                          onRetry: _errorMessage!.contains('load') ? () {
+                            if (_errorMessage!.contains('doctors')) {
+                              _loadDoctors();
+                            } else if (_errorMessage!.contains('time slots')) {
+                              _loadAvailableTimeSlots();
+                            }
+                          } : null,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -295,7 +360,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                                   }).toList(),
                                   validator: (value) {
                                     if (value == null) {
-                                      return 'Please select a doctor';
+                                      return 'Please select a doctor to proceed';
                                     }
                                     return null;
                                   },
@@ -408,36 +473,140 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                             ),
                           )
                         : _availableTimeSlots.isEmpty
-                            ? const Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: Text(
-                                  'No available time slots for the selected date.',
-                                  style: TextStyle(color: Colors.red),
+                            ? Card(
+                                color: Colors.amber[50],
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(Icons.schedule, color: Colors.amber[800]),
+                                          const SizedBox(width: 8),
+                                          const Text(
+                                            'No Available Time Slots',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        'All appointments for this date have been booked.',
+                                        style: TextStyle(fontSize: 14),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.lightbulb_outline, size: 16, color: Colors.amber),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              'Try selecting another date or a different doctor.',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontStyle: FontStyle.italic,
+                                                color: Colors.grey[700],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               )
-                            : Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: _availableTimeSlots.map((slot) {
-                                  final isSelected = _selectedTimeSlot == slot;
-                                  return ChoiceChip(
-                                    label: Text(slot),
-                                    selected: isSelected,
-                                    onSelected: (selected) {
+                            : FutureBuilder<List<String>>(
+                                future: _getAvailableTimeSlots(_selectedDoctor!.id, _selectedDate),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                    return const CircularProgressIndicator();
+                                  }
+                                  
+                                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                                    return Card(
+                                      color: Colors.amber[50],
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(16.0),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Icon(Icons.event_busy, color: Colors.amber[800]),
+                                                const SizedBox(width: 8),
+                                                const Text(
+                                                  'No Available Slots',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            const Text(
+                                              'There are no available appointment slots for this date.',
+                                              style: TextStyle(fontSize: 14),
+                                            ),
+                                            const Divider(),
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.tips_and_updates, size: 16, color: Colors.amber),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: RichText(
+                                                    text: TextSpan(
+                                                      style: TextStyle(fontSize: 14, color: Colors.grey[800]),
+                                                      children: const [
+                                                        TextSpan(
+                                                          text: 'TIP: ',
+                                                          style: TextStyle(fontWeight: FontWeight.bold),
+                                                        ),
+                                                        TextSpan(
+                                                          text: 'Try selecting a different date highlighted on the calendar.',
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  
+                                  final availableSlots = snapshot.data!;
+                                  return DropdownButtonFormField<String>(
+                                    value: _selectedTimeSlot,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Select Time',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    items: availableSlots
+                                      .map((slot) => DropdownMenuItem(
+                                        value: slot,
+                                        child: Text(slot),
+                                      ))
+                                      .toList(),
+                                    onChanged: (value) {
                                       setState(() {
-                                        _selectedTimeSlot = selected ? slot : null;
+                                        _selectedTimeSlot = value;
                                       });
                                     },
-                                    backgroundColor: Colors.grey[200],
-                                    selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
-                                    labelStyle: TextStyle(
-                                      color: isSelected
-                                          ? Theme.of(context).primaryColor
-                                          : Colors.black,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Please select an available time slot';
+                                      }
+                                      return null;
+                                    },
                                   );
-                                }).toList(),
+                                },
                               ),
                     const SizedBox(height: 24),
                     
@@ -459,7 +628,9 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                       maxLines: 3,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a reason';
+                          return 'Please briefly describe your reason for this appointment';
+                        } else if (value.trim().length < 10) {
+                          return 'Please provide more details about your visit';
                         }
                         return null;
                       },
@@ -482,6 +653,68 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                 ),
               ),
             ),
+    );
+  }
+}
+
+// Create a reusable error display widget
+class ErrorMessage extends StatelessWidget {
+  final String message;
+  final IconData? icon;
+  final VoidCallback? onRetry;
+
+  const ErrorMessage({
+    Key? key,
+    required this.message,
+    this.icon = Icons.error_outline,
+    this.onRetry,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.red.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: Colors.red.shade700),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: TextStyle(
+                    color: Colors.red.shade700,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (onRetry != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Try Again'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red.shade700,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

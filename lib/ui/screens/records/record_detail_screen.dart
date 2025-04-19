@@ -8,6 +8,7 @@ import 'package:happ/core/services/notification_service.dart';
 import 'package:happ/ui/screens/RecordVerificationScreen.dart';
 import 'package:happ/ui/screens/documents/document_viewer_screen.dart';
 import 'package:happ/ui/screens/records/edit_record_screen.dart';
+import 'package:happ/ui/screens/records/medical_insights_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:happ/ui/widgets/medical_term_simplifier.dart';
 
@@ -39,13 +40,24 @@ class _RecordDetailScreenState extends State<RecordDetailScreen> {
             icon: const Icon(Icons.verified),
             tooltip: 'Verify Record Integrity',
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => RecordVerificationScreen(record: widget.record),
-                ),
-              );
-            },
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => MedicalInsightsScreen(
+                        record: widget.record,
+                      ),
+                    ),
+                  );
+                },
+            // onPressed: () {
+              // OLD ROUTE
+              // Navigator.push(
+              //   context,
+              //   MaterialPageRoute(
+              //     builder: (context) => RecordVerificationScreen(record: widget.record),
+              //   ),
+              // );
+            // },
           ),
           IconButton(
             icon: const Icon(Icons.edit),
@@ -220,6 +232,34 @@ class _RecordDetailScreenState extends State<RecordDetailScreen> {
                 ),
               ),
             ],
+
+            const SizedBox(height: 24),
+            Text('Analyze Medical Document With Our AI', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+            // Add prominent button for medical insights
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MedicalInsightsScreen(
+                      record: widget.record,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.health_and_safety),
+              label: const Text('Analyze Report AI'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
           ],
         ),
       ),

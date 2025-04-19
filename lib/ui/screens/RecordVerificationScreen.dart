@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:happ/core/services/medical_nlp_service.dart';
-import 'package:web3dart/web3dart.dart';
-import 'package:eth_sig_util/eth_sig_util.dart';
 import 'package:happ/core/models/record.dart';
 import 'package:happ/core/services/blockchain_service.dart';
 import 'package:happ/ui/widgets/record_proof_share_sheet.dart';
-import 'package:happ/ui/screens/records/record_audit_trail_screen.dart';
 import 'package:happ/ui/screens/records/medical_insights_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';

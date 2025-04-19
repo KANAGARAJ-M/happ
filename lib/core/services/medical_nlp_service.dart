@@ -1,9 +1,7 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:happ/core/models/record.dart';
 import 'package:http/http.dart' as http;
-import 'package:firebase_storage/firebase_storage.dart';
 // Replace firebase_ml_vision with google_mlkit_text_recognition
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
@@ -15,7 +13,6 @@ import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:happ/core/services/notification_service.dart';
 // Add these imports at the top
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MedicalInsight {
   final String id;
