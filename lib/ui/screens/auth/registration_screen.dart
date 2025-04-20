@@ -26,6 +26,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final _weightController = TextEditingController();
   final _specializationController = TextEditingController();
   final _bioController = TextEditingController();
+  final _adminCodeController = TextEditingController(); // Add this line
+  bool _isAdminCodeValid = false; // Track if the admin code is valid
   
   DateTime? _selectedDOB;
   String _role = 'patient'; // Default role
@@ -77,6 +79,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     _weightController.dispose();
     _specializationController.dispose();
     _bioController.dispose();
+    _adminCodeController.dispose(); // Add this line
     super.dispose();
   }
 
@@ -245,7 +248,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         }
         
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), duration: const Duration(seconds: 5)),
+          SnackBar(content: Text(
+            message
+            ), 
+          duration: const Duration(seconds: 5)),
         );
         
         // Navigate to login screen
@@ -286,8 +292,17 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             _passwordController.text != _confirmPasswordController.text) {
           isValid = false;
         }
+        
+        // If doctor role is selected, require valid admin code
+        if (_role == 'doctor' && !_isAdminCodeValid) {
+          isValid = false;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please enter a valid admin code to register as a doctor')),
+          );
+          return; // Return early with specific error message
+        }
       } else if (_currentStep == 1) {
-        // Role-specific info validation
+        // Other validation remains the same
         if (_phoneController.text.isEmpty || _selectedDOB == null) {
           isValid = false;
         }
@@ -311,6 +326,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
         );
       }
     }
+  }
+
+  void _validateAdminCode(String value) {
+    // The admin code is "nlthma4626"
+    setState(() {
+      _isAdminCodeValid = value == 'nlthma4626';
+    });
   }
 
   void _cancel() {
@@ -454,6 +476,34 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     ),
                     const SizedBox(height: 16),
                     
+                    // Admin code field - only show for doctor role
+                    if (_role == 'doctor') ...[
+                      TextFormField(
+                        controller: _adminCodeController,
+                        decoration: InputDecoration(
+                          labelText: 'Admin Code *',
+                          prefixIcon: const Icon(Icons.security),
+                          border: const OutlineInputBorder(),
+                          suffixIcon: _isAdminCodeValid
+                              ? const Icon(Icons.check_circle, color: Colors.green)
+                              : const Icon(Icons.error, color: Colors.red),
+                          helperText: 'Required for doctor registration',
+                        ),
+                        onChanged: _validateAdminCode,
+                        obscureText: true, // Hide the admin code as it's typed
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter the admin code';
+                          }
+                          if (!_isAdminCodeValid) {
+                            return 'Invalid admin code';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
                     // Name Field
                     TextFormField(
                       controller: _nameController,
@@ -633,6 +683,29 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       ),
                       const SizedBox(height: 8),
                       
+                      // Info container
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.shade100),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.blue.shade700, size: 16),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text(
+                                'If you are already a patient at our hospital, select "Enter manually" and use your existing patient ID',
+                                style: TextStyle(fontSize: 12,color: Colors.blue),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
                       // Option to auto-generate or manually enter
                       Row(
                         children: [
@@ -789,6 +862,29 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           return null;
                         },
                       ),
+                      const SizedBox(height: 16),
+
+                      // Admin Code (for doctor)
+                      // TextFormField(
+                      //   controller: _adminCodeController,
+                      //   decoration: const InputDecoration(
+                      //     labelText: 'Admin Code *',
+                      //     prefixIcon: Icon(Icons.admin_panel_settings),
+                      //     border: OutlineInputBorder(),
+                      //     hintText: 'Enter admin code to register as a doctor',
+                      //   ),
+                      //   onChanged: _validateAdminCode,
+                      //   obscureText: true,
+                      //   validator: (value) {
+                      //     if (value == null || value.isEmpty) {
+                      //       return 'Please enter the admin code';
+                      //     }
+                      //     if (!_isAdminCodeValid) {
+                      //       return 'Invalid admin code';
+                      //     }
+                      //     return null;
+                      //   },
+                      // ),
                     ],
                   ],
                 ),

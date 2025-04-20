@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:happ/ui/screens/notifications/notification_history_screen.dart';
 import 'package:happ/ui/screens/patient/ai/AISchedulingAssistant.dart';
 import 'package:happ/ui/screens/patient/emergency/sos_emergency_screen.dart';
+import 'package:happ/ui/screens/patient/settings_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -490,6 +491,20 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                                           );
                                         },
                                       ),
+                                      _buildQuickAction(
+                                        context,
+                                        Icons.settings,
+                                        'Settings',
+                                        Colors.grey,
+                                        () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => const SettingsScreen(),
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     ],
                                   );
                                 },
@@ -745,88 +760,88 @@ class _PatientDashboardScreenState extends State<PatientDashboardScreen> {
                           ),
 
                       const SizedBox(height: 16),
-                      const SizedBox(height: 24),
+                      // const SizedBox(height: 24),
 
-                      // Future Features Section
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 24),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.blue.shade100,
-                              Colors.indigo.shade100,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.star, color: Colors.amber),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Coming Up Features',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleLarge!.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.indigo.shade800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            _buildComingFeatureItem(
-                              Icons.watch,
-                              'Smart Health Tracking',
-                              'Real-time health monitoring via smartwatch integration.',
-                              Colors.purple,
-                            ),
-                            _buildComingFeatureItem(
-                              Icons.smart_toy,
-                              'AI Appointment Booking',
-                              'Let AI find the perfect appointment time with your doctor.',
-                              Colors.blue,
-                            ),
-                            _buildComingFeatureItem(
-                              Icons.emergency,
-                              'SOS Emergency Feature',
-                              'One-tap emergency alerts with location sharing.',
-                              Colors.red,
-                            ),
-                            _buildComingFeatureItem(
-                              Icons.assistant,
-                              'Personal AI Health Assistant',
-                              'AI-powered insights from your medical records and vitals.',
-                              Colors.green,
-                            ),
-                            _buildComingFeatureItem(
-                              Icons.shopping_cart,
-                              'Medicine E-Shop',
-                              'Purchase prescription medications directly through the app.',
-                              Colors.orange,
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: ElevatedButton(
-                                onPressed: () => _showComingUpFeatures(context),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.indigo,
-                                  foregroundColor: Colors.white,
-                                  minimumSize: const Size(double.infinity, 50),
-                                ),
-                                child: const Text('Notify Me When Available'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      // // Future Features Section
+                      // Container(
+                      //   margin: const EdgeInsets.only(bottom: 24),
+                      //   decoration: BoxDecoration(
+                      //     gradient: LinearGradient(
+                      //       colors: [
+                      //         Colors.blue.shade100,
+                      //         Colors.indigo.shade100,
+                      //       ],
+                      //       begin: Alignment.topLeft,
+                      //       end: Alignment.bottomRight,
+                      //     ),
+                      //     borderRadius: BorderRadius.circular(16),
+                      //   ),
+                      //   child: Column(
+                      //     crossAxisAlignment: CrossAxisAlignment.start,
+                      //     children: [
+                      //       Padding(
+                      //         padding: const EdgeInsets.all(16),
+                      //         child: Row(
+                      //           children: [
+                      //             Icon(Icons.star, color: Colors.amber),
+                      //             const SizedBox(width: 8),
+                      //             Text(
+                      //               'Coming Up Features',
+                      //               style: Theme.of(
+                      //                 context,
+                      //               ).textTheme.titleLarge!.copyWith(
+                      //                 fontWeight: FontWeight.bold,
+                      //                 color: Colors.indigo.shade800,
+                      //               ),
+                      //             ),
+                      //           ],
+                      //         ),
+                      //       ),
+                      //       _buildComingFeatureItem(
+                      //         Icons.watch,
+                      //         'Smart Health Tracking',
+                      //         'Real-time health monitoring via smartwatch integration.',
+                      //         Colors.purple,
+                      //       ),
+                      //       _buildComingFeatureItem(
+                      //         Icons.smart_toy,
+                      //         'AI Appointment Booking',
+                      //         'Let AI find the perfect appointment time with your doctor.',
+                      //         Colors.blue,
+                      //       ),
+                      //       _buildComingFeatureItem(
+                      //         Icons.emergency,
+                      //         'SOS Emergency Feature',
+                      //         'One-tap emergency alerts with location sharing.',
+                      //         Colors.red,
+                      //       ),
+                      //       _buildComingFeatureItem(
+                      //         Icons.assistant,
+                      //         'Personal AI Health Assistant',
+                      //         'AI-powered insights from your medical records and vitals.',
+                      //         Colors.green,
+                      //       ),
+                      //       _buildComingFeatureItem(
+                      //         Icons.shopping_cart,
+                      //         'Medicine E-Shop',
+                      //         'Purchase prescription medications directly through the app.',
+                      //         Colors.orange,
+                      //       ),
+                      //       Padding(
+                      //         padding: const EdgeInsets.all(16),
+                      //         child: ElevatedButton(
+                      //           onPressed: () => _showComingUpFeatures(context),
+                      //           style: ElevatedButton.styleFrom(
+                      //             backgroundColor: Colors.indigo,
+                      //             foregroundColor: Colors.white,
+                      //             minimumSize: const Size(double.infinity, 50),
+                      //           ),
+                      //           child: const Text('Notify Me When Available'),
+                      //         ),
+                      //       ),
+                      //     ],
+                      //   ),
+                      // ),
                     ],
                   ),
                 ),

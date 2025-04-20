@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:happ/core/providers/appointment_provider.dart';
+import 'package:happ/core/providers/theme_provider.dart';
 import 'package:happ/core/services/notification_service.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -49,15 +50,8 @@ Future<void> main() async {
     }
   });
   
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
+  runApp(
+    MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => RecordsProvider()),
         ChangeNotifierProvider(
@@ -66,16 +60,29 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => AppointmentProvider(),
         ),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
-      child: MaterialApp(
-        title: 'MedicoLegal Records',
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system,
-        debugShowCheckedModeBanner: false,
-        navigatorKey: NavigationService.navigatorKey,
-        home: const SplashScreen(),
-      ),
+      child: const MyApp(),
+    ),
+  );
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Get the theme mode from the provider
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    
+    return MaterialApp(
+      title: 'MedicoLegal Records',
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeProvider.themeMode, // Use the provider's theme mode
+      debugShowCheckedModeBanner: false,
+      navigatorKey: NavigationService.navigatorKey,
+      home: const SplashScreen(),
     );
   }
 }

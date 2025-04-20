@@ -5,7 +5,10 @@ import 'package:happ/ui/screens/doctor/doctor_dashboard_screen.dart';
 import 'package:happ/ui/screens/doctor/doctor_profile_screen.dart';
 import 'package:happ/ui/screens/doctor/patient_list_screen.dart';
 import 'package:happ/ui/screens/notifications/notification_history_screen.dart';
+import 'package:happ/ui/screens/patient/ai/AISchedulingAssistant.dart';
+import 'package:happ/ui/screens/patient/ai/PersonalHealthAssistant.dart';
 import 'package:happ/ui/screens/patient/doctor_list_screen.dart';
+import 'package:happ/ui/screens/patient/emergency/sos_emergency_screen.dart';
 import 'package:happ/ui/screens/patient/my_appointments_screen.dart';
 import 'package:happ/ui/screens/patient/patient_dashboard_screen.dart';
 import 'package:happ/ui/screens/patient/patient_profile_screen.dart';
@@ -50,10 +53,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadRecordsIfNeeded() async {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final recordsProvider = Provider.of<RecordsProvider>(context, listen: false);
+      final recordsProvider = Provider.of<RecordsProvider>(
+        context,
+        listen: false,
+      );
 
       if (authProvider.currentUser != null) {
-        print("Loading records from HomeScreen for user ${authProvider.currentUser!.id}");
+        print(
+          "Loading records from HomeScreen for user ${authProvider.currentUser!.id}",
+        );
         // Use the fetchRecordsWithPermissions method
         await recordsProvider.fetchRecordsWithPermissions(
           authProvider.currentUser!.id,
@@ -61,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     } catch (e) {
-      print("Error loading dashboard data: $e");
+      // print("Error loading dashboard data: $e");
       // Don't rethrow to prevent app crashes
     }
   }
@@ -143,12 +151,24 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Dashboard',
           ),
           if (authProvider.currentUser?.role == 'patient')
-            const BottomNavigationBarItem(icon: Icon(Icons.folder), label: 'Records'),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.folder),
+              label: 'Records',
+            ),
           if (authProvider.currentUser?.role == 'doctor')
-            const BottomNavigationBarItem(icon: Icon(Icons.people), label: 'My Patients'),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.people),
+              label: 'My Patients',
+            ),
           if (authProvider.currentUser?.role == 'doctor')
-            const BottomNavigationBarItem(icon: Icon(Icons.calendar_today_outlined), label: 'Requests'),
-          const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today_outlined),
+              label: 'Requests',
+            ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
         ],
       ),
       // floatingActionButton: FloatingActionButton.extended(
@@ -178,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.folder),
+              leading: const Icon(Icons.folder,color: Colors.purple,),
               title: const Text('Records'),
               onTap: () {
                 _onItemTapped(1);
@@ -194,31 +214,31 @@ class _HomeScreenState extends State<HomeScreen> {
             //   },
             // ),
             if (authProvider.currentUser?.role == 'patient')
-            ListTile(
-              leading: const Icon(Icons.person),
-              title: const Text('Profile'),
-              onTap: () {
-                Navigator.push(
+              ListTile(
+                leading: const Icon(Icons.person,color: Colors.amber,),
+                title: const Text('Profile'),
+                onTap: () {
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const PatientProfileScreen(),
                     ),
                   );
-              },
-            ),
+                },
+              ),
             if (authProvider.currentUser?.role == 'doctor')
-            ListTile(
-              leading: const Icon(Icons.person),
-              title: const Text('Profile'),
-              onTap: () {
-                Navigator.push(
+              ListTile(
+                leading: const Icon(Icons.person),
+                title: const Text('Profile'),
+                onTap: () {
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const DoctorProfileScreen(),
                     ),
                   );
-              },
-            ),
+                },
+              ),
             if (authProvider.currentUser?.role == 'doctor')
               ListTile(
                 leading: const Icon(Icons.people),
@@ -234,7 +254,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             if (authProvider.currentUser?.role == 'patient')
               ListTile(
-                leading: const Icon(Icons.settings),
+                leading: const Icon(Icons.settings,color: Colors.grey),
                 title: const Text('Settings'),
                 onTap: () {
                   Navigator.push(
@@ -277,7 +297,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             if (authProvider.currentUser?.role == 'patient')
               ListTile(
-                leading: const Icon(Icons.calendar_today),
+                leading: const Icon(Icons.calendar_today,color: Colors.blue,),
                 title: const Text('Book Appointment'),
                 onTap: () {
                   Navigator.pop(context); // Close drawer
@@ -289,6 +309,47 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
+            if (authProvider.currentUser?.role == 'patient')
+              ListTile(
+                leading: const Icon(Icons.assistant, color: Colors.green,),
+                title: const Text('AI Appointment Booking'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AISchedulingAssistant(),
+                    ),
+                  );
+                },
+              ),
+            if (authProvider.currentUser?.role == 'patient')
+              ListTile(
+                leading: const Icon(Icons.health_and_safety, color: Colors.teal,),
+                title: const Text('AI Health Assistant'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PersonalHealthAssistant(),
+                    ),
+                  );
+                },
+              ),
+
+            if (authProvider.currentUser?.role == 'patient')
+              ListTile(
+                leading: const Icon(Icons.emergency,color: Colors.red,),
+                title: const Text('SOS'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SOSEmergencyScreen(),
+                    ),
+                  );
+                },
+              ),
+
             if (authProvider.currentUser?.role == 'patient')
               ListTile(
                 leading: const Icon(Icons.calendar_month, color: Colors.blue),

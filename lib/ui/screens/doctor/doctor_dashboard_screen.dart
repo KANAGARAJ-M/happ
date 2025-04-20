@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:happ/ui/screens/notifications/notification_history_screen.dart';
+import 'package:happ/ui/screens/patient/settings_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -108,7 +109,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading dashboard data: $e')),
+          SnackBar(content: Text('Error loading dashboard data')),
         );
       }
     }
@@ -312,9 +313,12 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                                   Icons.settings,
                                   'Settings',
                                   Colors.grey,
-                                  () {
-                                    // Navigate to settings
-                                  },
+                                  () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const SettingsScreen(),
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
